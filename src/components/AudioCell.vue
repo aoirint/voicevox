@@ -189,12 +189,14 @@ export default defineComponent({
 
     const selectedCharacterInfo = computed(() =>
       store.state.characterInfos !== undefined &&
-      audioItem.value.styleId !== undefined
-        ? store.state.characterInfos.find((info) =>
+      audioItem.value.styleId !== undefined // TODO: fix here
+        ? Object.entries(store.state.characterInfos).find(([, infos]) =>
+          infos.find((info) => 
             info.metas.styles.find(
               (style) => style.styleId === audioItem.value.styleId
             )
           )
+        ).map(([,info]))
         : undefined
     );
     const selectedStyle = computed(() =>

@@ -374,8 +374,8 @@ export default defineComponent({
 
     // プロジェクトを初期化
     onMounted(async () => {
-      await store.dispatch("START_WAITING_ENGINE");
-      await store.dispatch("LOAD_CHARACTER");
+      await store.dispatch("START_WAITING_ENGINE_ALL");
+      await store.dispatch("LOAD_CHARACTER_ALL");
       await store.dispatch("LOAD_DEFAULT_STYLE_IDS");
 
       let isUnsetDefaultStyleIds = false;

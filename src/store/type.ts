@@ -27,6 +27,8 @@ import { QVueGlobals } from "quasar";
 
 export type AudioItem = {
   text: string;
+  engineKey?: string;
+  speakerUuid?: string; // https://github.com/VOICEVOX/voicevox/pull/279
   styleId?: number;
   query?: AudioQuery;
   presetKey?: string;
@@ -68,8 +70,9 @@ export type QuasarDialog = QVueGlobals["dialog"];
  */
 
 export type AudioStoreState = {
-  engineState: EngineState;
-  characterInfos?: CharacterInfo[];
+  engineKeys: string[];
+  engineStates: Record<string, EngineState>;
+  characterInfos: Record<string, CharacterInfo[]>;
   audioItems: Record<string, AudioItem>;
   audioKeys: string[];
   audioStates: Record<string, AudioState>;
@@ -94,8 +97,12 @@ type AudioStoreTypes = {
     getter: boolean;
   };
 
-  START_WAITING_ENGINE: {
+  START_WAITING_ENGINE_ALL: {
     action(): void;
+  };
+
+  START_WAITING_ENGINE: {
+    action(payload: { engineKey: string }): void;
   };
 
   RESTART_ENGINE: {
@@ -107,15 +114,19 @@ type AudioStoreTypes = {
   };
 
   SET_ENGINE_STATE: {
-    mutation: { engineState: EngineState };
+    mutation: { engineKey: string; engineState: EngineState };
   };
 
-  LOAD_CHARACTER: {
+  LOAD_CHARACTER_ALL: {
     action(): void;
   };
 
+  LOAD_CHARACTER: {
+    action(payload: { engineKey: string }): void;
+  };
+
   SET_CHARACTER_INFOS: {
-    mutation: { characterInfos: CharacterInfo[] };
+    mutation: { engineKey: string; characterInfos: CharacterInfo[] };
   };
 
   GENERATE_AUDIO_KEY: {
@@ -678,7 +689,7 @@ export type SettingStoreState = {
   savingSetting: SavingSetting;
   hotkeySettings: HotkeySetting[];
   toolbarSetting: ToolbarSetting;
-  engineHost: string;
+  engineHosts: string[];
   themeSetting: ThemeSetting;
   acceptRetrieveTelemetry: AcceptRetrieveTelemetryStatus;
 };
@@ -925,6 +936,7 @@ export type IEngineConnectorFactoryActions = ReturnType<
 type IEngineConnectorFactoryActionsMapper<K> =
   K extends keyof IEngineConnectorFactoryActions
     ? (payload: {
+        host: string;
         action: K;
         payload: Parameters<IEngineConnectorFactoryActions[K]>;
       }) => ReturnType<IEngineConnectorFactoryActions[K]>
