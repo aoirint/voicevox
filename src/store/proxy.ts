@@ -23,7 +23,7 @@ const proxyStoreCreator = (
     getters: {},
     mutations: {},
     actions: {
-      INVOKE_ENGINE_CONNECTOR({ rootState }, payload) {
+      INVOKE_ENGINE_CONNECTOR(_, payload) {
         const host = payload.host;
         const instance = _engineFactory.instance(host);
         const action = payload.action;
