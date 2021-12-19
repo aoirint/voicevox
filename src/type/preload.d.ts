@@ -76,6 +76,11 @@ export type AppInfos = {
   version: string;
 };
 
+export type UniqueVoiceKey = {
+  speakerUuid: string;
+  styleId: number;
+};
+
 export type StyleInfo = {
   styleName?: string;
   styleId: number;

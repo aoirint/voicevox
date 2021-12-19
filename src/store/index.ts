@@ -49,9 +49,7 @@ export const indexStore: VoiceVoxStoreOptions<
         if (audioItem.text === "") {
           const characterInfo = state.characterInfos?.find(
             (info) =>
-              info.metas.styles.find(
-                (style) => style.styleId == audioItem.styleId
-              ) != undefined
+              info.metas.speakerUuid === audioItem.uniqueVoiceKey?.speakerUuid
           );
           if (characterInfo == undefined)
             throw new Error("characterInfo == undefined");
@@ -60,8 +58,13 @@ export const indexStore: VoiceVoxStoreOptions<
           const defaultStyleId = defaultStyleIds.find(
             (styleId) => speakerUuid == styleId.speakerUuid
           )?.defaultStyleId;
+          if (defaultStyleId == undefined)
+            throw new Error("defaultStyleId == undefined");
 
-          audioItem.styleId = defaultStyleId;
+          audioItem.uniqueVoiceKey = {
+            speakerUuid: speakerUuid,
+            styleId: defaultStyleId,
+          };
         }
       }
     },

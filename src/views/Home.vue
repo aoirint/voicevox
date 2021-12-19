@@ -150,7 +150,7 @@ import AcceptRetrieveTelemetryDialog from "@/components/AcceptRetrieveTelemetryD
 import { AudioItem } from "@/store/type";
 import { QResizeObserver } from "quasar";
 import path from "path";
-import { HotkeyAction, HotkeyReturnType } from "@/type/preload";
+import { HotkeyAction, HotkeyReturnType, UniqueVoiceKey } from "@/type/preload";
 import { parseCombo, setHotkeyFunctions } from "@/store/setting";
 import { useGtm } from "@gtm-support/vue-gtm";
 
@@ -301,10 +301,10 @@ export default defineComponent({
     );
     const addAudioItem = async () => {
       const prevAudioKey = activeAudioKey.value;
-      let styleId: number | undefined = undefined;
+      let uniqueVoiceKey: UniqueVoiceKey | undefined = undefined;
       let presetKey: string | undefined = undefined;
       if (prevAudioKey !== undefined) {
-        styleId = store.state.audioItems[prevAudioKey].styleId;
+        uniqueVoiceKey = store.state.audioItems[prevAudioKey].uniqueVoiceKey;
         presetKey = store.state.audioItems[prevAudioKey].presetKey;
       }
       let audioItem: AudioItem;
@@ -317,7 +317,7 @@ export default defineComponent({
       //パラメータ引き継ぎがONの場合は話速等のパラメータを引き継いでテキスト欄を作成する
       //パラメータ引き継ぎがOFFの場合、baseAudioItemがundefinedになっているのでパラメータ引き継ぎは行われない
       audioItem = await store.dispatch("GENERATE_AUDIO_ITEM", {
-        styleId,
+        uniqueVoiceKey,
         presetKey,
         baseAudioItem,
       });

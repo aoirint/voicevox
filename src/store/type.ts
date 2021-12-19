@@ -21,13 +21,14 @@ import {
   ToolbarSetting,
   UpdateInfo,
   Preset,
+  UniqueVoiceKey,
 } from "@/type/preload";
 import { IEngineConnectorFactory } from "@/infrastructures/EngineConnector";
 import { QVueGlobals } from "quasar";
 
 export type AudioItem = {
   text: string;
-  styleId?: number;
+  uniqueVoiceKey?: UniqueVoiceKey;
   query?: AudioQuery;
   presetKey?: string;
 };
@@ -142,7 +143,7 @@ type AudioStoreTypes = {
   GENERATE_AUDIO_ITEM: {
     action(payload: {
       text?: string;
-      styleId?: number;
+      uniqueVoiceKey?: UniqueVoiceKey;
       presetKey?: string;
       baseAudioItem?: AudioItem;
     }): Promise<AudioItem>;
@@ -223,8 +224,8 @@ type AudioStoreTypes = {
     action(payload: { text: string; styleId: number }): Promise<AudioQuery>;
   };
 
-  SET_AUDIO_STYLE_ID: {
-    mutation: { audioKey: string; styleId: number };
+  SET_AUDIO_UNIQUE_VOICE_KEY: {
+    mutation: { audioKey: string; uniqueVoiceKey: UniqueVoiceKey };
   };
 
   SET_ACCENT_PHRASES: {
@@ -386,13 +387,13 @@ type AudioCommandStoreTypes = {
     action(payload: { audioKey: string; text: string }): void;
   };
 
-  COMMAND_CHANGE_STYLE_ID: {
-    mutation: { styleId: number; audioKey: string } & (
-      | { update: "StyleId" }
+  COMMAND_CHANGE_UNIQUE_VOICE_KEY: {
+    mutation: { uniqueVoiceKey: UniqueVoiceKey; audioKey: string } & (
+      | { update: "UniqueVoiceKey" }
       | { update: "AccentPhrases"; accentPhrases: AccentPhrase[] }
       | { update: "AudioQuery"; query: AudioQuery }
     );
-    action(payload: { audioKey: string; styleId: number }): void;
+    action(payload: { audioKey: string; uniqueVoiceKey: UniqueVoiceKey }): void;
   };
 
   COMMAND_CHANGE_ACCENT: {
@@ -504,7 +505,7 @@ type AudioCommandStoreTypes = {
     action(payload: {
       prevAudioKey: string;
       texts: string[];
-      styleId: number;
+      uniqueVoiceKey: UniqueVoiceKey;
     }): string[];
   };
 };

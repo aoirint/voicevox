@@ -21,11 +21,11 @@ export default defineComponent({
       const audioItem = activeAudioKey
         ? store.state.audioItems[activeAudioKey]
         : undefined;
-      const styleId = audioItem?.styleId;
+      const uniqueVoiceKey = audioItem?.uniqueVoiceKey;
 
-      return styleId !== undefined
-        ? characterInfos.find((info) =>
-            info.metas.styles.find((style) => style.styleId === styleId)
+      return uniqueVoiceKey !== undefined
+        ? characterInfos.find(
+            (info) => info.metas.speakerUuid === uniqueVoiceKey.speakerUuid
           )
         : undefined;
     });
@@ -35,7 +35,7 @@ export default defineComponent({
       const audioItem = activeAudioKey
         ? store.state.audioItems[activeAudioKey]
         : undefined;
-      const styleId = audioItem?.styleId;
+      const styleId = audioItem?.uniqueVoiceKey?.styleId;
       const style = characterInfo.value?.metas.styles.find(
         (style) => style.styleId === styleId
       );
