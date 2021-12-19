@@ -61,7 +61,10 @@ const defaultEngineHosts = (() => {
 let win: BrowserWindow;
 
 // 多重起動防止
-if (!isDevelopment && !app.requestSingleInstanceLock()) app.quit();
+if (!isDevelopment && !app.requestSingleInstanceLock()) {
+  log.info("VOICEVOX already running. Cancelling launch");
+  app.quit();
+}
 
 process.on("uncaughtException", (error) => {
   log.error(error);
@@ -301,11 +304,17 @@ const store = new Store<{
 });
 
 // engine
-let willQuitEngine = false;
-let engineProcess: ChildProcess;
+interface EngineContainer {
+  willQuitEngine: boolean;
+  process?: ChildProcess;
+}
+
+const engineContainers: Record<string, EngineContainer> = {};
+
 async function runEngineAll() {
   const engineHosts = store.get("engineHosts");
   for (const engineHost of engineHosts) {
+    log.info(`ENGINE ${engineHost.key}: Start launching`);
     await runEngine(engineHost.key);
   }
 }
@@ -318,9 +327,19 @@ async function runEngine(engineKey: string) {
   if (engineHost == undefined)
     throw new Error("assert engineHost != undefined");
 
-  if (!engineHost.executablePath) return; // Skip engine start if empty
+  if (!engineHost.executablePath) {
+    log.info(`ENGINE ${engineHost.key}: No executablePath. Skip launching`);
+    return;
+  }
 
-  willQuitEngine = false;
+  if (!(engineHost.key in engineContainers)) {
+    engineContainers[engineHost.key] = {
+      willQuitEngine: false,
+    };
+  }
+
+  const engineContainer = engineContainers[engineHost.key];
+  engineContainer.willQuitEngine = false;
 
   // 最初のエンジンモード
   if (!store.has("useGpu")) {
@@ -343,29 +362,35 @@ async function runEngine(engineKey: string) {
   const useGpu = store.get("useGpu");
   const inheritAudioInfo = store.get("inheritAudioInfo");
 
-  log.info(`Starting ENGINE in ${useGpu ? "GPU" : "CPU"} mode`);
+  log.info(`ENGINE ${engineHost.key} mode: ${useGpu ? "GPU" : "CPU"}`);
 
   // エンジンプロセスの起動
   const enginePath = path.resolve(appDirPath, engineHost.executablePath);
   const args = useGpu ? ["--use_gpu"] : [];
 
-  engineProcess = spawn(enginePath, args, {
+  log.info(`ENGINE ${engineHost.key} path: ${enginePath}`);
+  log.info(`ENGINE ${engineHost.key} args: ${JSON.stringify(args)}`);
+
+  const engineProcess = spawn(enginePath, args, {
     cwd: path.dirname(enginePath),
   });
+  engineContainers[engineKey].process = engineProcess;
 
   engineProcess.stdout?.on("data", (data) => {
-    log.info("ENGINE: " + data.toString("utf-8"));
+    log.info(`ENGINE ${engineHost.key}: ${data.toString("utf-8")}`);
   });
 
   engineProcess.stderr?.on("data", (data) => {
-    log.error("ENGINE: " + data.toString("utf-8"));
+    log.error(`ENGINE ${engineHost.key}: ${data.toString("utf-8")}`);
   });
 
   engineProcess.on("close", (code, signal) => {
-    log.info(`ENGINE: terminated due to receipt of signal ${signal}`);
-    log.info(`ENGINE: exited with code ${code}`);
+    log.info(
+      `ENGINE ${engineHost.key}: terminated due to receipt of signal ${signal}`
+    );
+    log.info(`ENGINE ${engineHost.key}: exited with code ${code}`);
 
-    if (!willQuitEngine) {
+    if (!engineContainer.willQuitEngine) {
       ipcMainSend(win, "DETECTED_ENGINE_ERROR", { engineKey });
       dialog.showErrorBox(
         "音声合成エンジンエラー",
@@ -377,17 +402,20 @@ async function runEngine(engineKey: string) {
 
 function restartEngine(engineKey: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
+    const engineContainer = engineContainers[engineKey];
+    const engineProcess = engineContainer.process;
+
     log.info(
-      `Restarting ENGINE (last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode})`
+      `ENGINE ${engineKey}: Restarting (last exit code: ${engineProcess?.exitCode}, signal: ${engineProcess?.signalCode})`
     );
 
     // エンジンのプロセスがすでに終了している、またはkillされている場合
-    const engineExited = engineProcess.exitCode !== null;
-    const engineKilled = engineProcess.signalCode !== null;
+    const engineExited = engineProcess?.exitCode !== null;
+    const engineKilled = engineProcess?.signalCode !== null;
 
     if (engineExited || engineKilled) {
       log.info(
-        "ENGINE process is not started yet or already killed. Starting ENGINE..."
+        `ENGINE ${engineKey}: Process not started yet or already killed. Starting ENGINE...`
       );
 
       runEngine(engineKey);
@@ -396,12 +424,12 @@ function restartEngine(engineKey: string): Promise<void> {
     }
 
     // エンジンエラー時のエラーウィンドウ抑制用。
-    willQuitEngine = true;
+    engineContainer.willQuitEngine = true;
 
     // 「killに使用するコマンドが終了するタイミング」と「OSがプロセスをkillするタイミング」が違うので単純にtreeKillのコールバック関数でrunEngine()を実行すると失敗します。
     // closeイベントはexitイベントよりも後に発火します。
     const restartEngineOnProcessClosedCallback = () => {
-      log.info("ENGINE process killed. Restarting ENGINE...");
+      log.info(`ENGINE ${engineKey}: Process killed. Restarting ENGINE...`);
 
       runEngine(engineKey);
       resolve();
@@ -409,11 +437,13 @@ function restartEngine(engineKey: string): Promise<void> {
     engineProcess.once("close", restartEngineOnProcessClosedCallback);
 
     // treeKillのコールバック関数はコマンドが終了した時に呼ばれます。
-    log.info(`Killing current ENGINE process (PID=${engineProcess.pid})...`);
+    log.info(
+      `ENGINE ${engineKey}: Killing current process (PID=${engineProcess.pid})...`
+    );
     treeKill(engineProcess.pid, (error) => {
       // error変数の値がundefined以外であればkillコマンドが失敗したことを意味します。
       if (error != null) {
-        log.error("Failed to kill ENGINE");
+        log.error(`ENGINE ${engineKey}: Failed to kill`);
         log.error(error);
 
         // killに失敗したとき、closeイベントが発生せず、once listenerが消費されない
@@ -427,6 +457,100 @@ function restartEngine(engineKey: string): Promise<void> {
       }
     });
   });
+}
+
+function killEngine({
+  engineKey,
+  onKillStart,
+  onKilled,
+  onError,
+}: {
+  engineKey: string;
+  onKillStart?: VoidFunction;
+  onKilled?: VoidFunction;
+  onError?: (message: string) => void;
+}) {
+  const engineContainer = engineContainers[engineKey];
+  if (!engineContainer) {
+    onError?.(`No such engineContainer: ${engineKey}`);
+    return;
+  }
+
+  const engineProcess = engineContainer.process;
+  if (engineProcess == undefined) {
+    // nop if no process started (already killed or not started yet)
+    log.info(`ENGINE ${engineKey}: Process not stated`);
+    onKilled?.();
+    return;
+  }
+
+  // considering the case that ENGINE process killed after checking process status
+  engineProcess.once("close", () => {
+    log.info(`ENGINE ${engineKey}: Process closed`);
+    onKilled?.();
+  });
+
+  log.info(
+    `ENGINE ${engineKey}: last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode}`
+  );
+
+  const engineNotExited = engineProcess.exitCode === null;
+  const engineNotKilled = engineProcess.signalCode === null;
+
+  if (engineNotExited && engineNotKilled) {
+    log.info(
+      `ENGINE ${engineKey}: Killing process (PID=${engineProcess.pid})`
+    );
+    onKillStart?.();
+
+    engineContainer.willQuitEngine = true;
+    try {
+      engineProcess.pid != undefined && treeKill(engineProcess.pid);
+    } catch (error: unknown) {
+      log.error(`ENGINE ${engineKey}: Error during killing process`);
+      log.error(error);
+    }
+  } else {
+    log.info(`ENGINE ${engineKey}: Process already closed`);
+  }
+}
+
+function killEngineAll({
+  onFirstKillStart,
+  onAllKilled,
+  onError,
+}: {
+  onFirstKillStart?: VoidFunction;
+  onAllKilled?: VoidFunction;
+  onError?: (engineKey: string, message: string) => void;
+}) {
+  let anyKillStart = false;
+
+  const numEngines = Object.keys(engineContainers).length;
+  let numEngineKilled = 0;
+
+  for (const [engineKey] of Object.entries(engineContainers)) {
+    killEngine({
+      engineKey,
+      onKillStart: () => {
+        if (!anyKillStart) {
+          anyKillStart = true;
+          onFirstKillStart?.();
+        }
+      },
+      onKilled: () => {
+        numEngineKilled++;
+        log.info(
+          `ENGINE ${numEngineKilled} / ${numEngines} processes killed`
+        );
+
+        if (numEngineKilled === numEngines) {
+          onAllKilled?.();
+        }
+      },
+      onError: (message) => onError?.(engineKey, message),
+    });
+  }
 }
 
 // temp dir
@@ -755,7 +879,6 @@ ipcMainHandle("RESTART_ENGINE_ALL", async () => {
 
   for (const engineHost of engineHosts) {
     await restartEngine(engineHost.key);
-    break;
   }
 });
 
@@ -869,6 +992,7 @@ app.on("web-contents-created", (e, contents) => {
 });
 
 app.on("window-all-closed", () => {
+  log.info("All windows closed. Quitting app")
   app.quit();
 });
 
@@ -880,32 +1004,20 @@ app.on("before-quit", (event) => {
     return;
   }
 
-  // considering the case that ENGINE process killed after checking process status
-  engineProcess.once("close", () => {
-    log.info("ENGINE killed. Quitting app");
-    app.quit(); // attempt to quit app again
+  log.info("Checking ENGINE status before app quit");
+  killEngineAll({
+    onFirstKillStart: () => {
+      log.info("Interrupt app quit to kill ENGINE");
+      event.preventDefault();
+    },
+    onAllKilled: () => {
+      log.info("All ENGINE killed. Quitting app");
+      app.quit(); // attempt to quit app again
+    },
+    onError: (engineKey, message) => {
+      console.error(`Error during killing ENGINE ${engineKey}: ${message}`);
+    },
   });
-
-  log.info(
-    `Quitting app (ENGINE last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode})`
-  );
-
-  const engineNotExited = engineProcess.exitCode === null;
-  const engineNotKilled = engineProcess.signalCode === null;
-
-  if (engineNotExited && engineNotKilled) {
-    log.info("Killing ENGINE before app quit");
-    event.preventDefault();
-
-    log.info(`Killing ENGINE (PID=${engineProcess.pid})...`);
-    willQuitEngine = true;
-    try {
-      engineProcess.pid != undefined && treeKill(engineProcess.pid);
-    } catch (error: unknown) {
-      log.error("engine kill error");
-      log.error(error);
-    }
-  }
 });
 
 app.on("activate", () => {
@@ -945,11 +1057,13 @@ if (isDevelopment) {
   if (process.platform === "win32") {
     process.on("message", (data) => {
       if (data === "graceful-exit") {
+        log.info("Received graceful-exit");
         app.quit();
       }
     });
   } else {
     process.on("SIGTERM", () => {
+      log.info("Received SIGTERM");
       app.quit();
     });
   }
