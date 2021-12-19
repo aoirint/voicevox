@@ -27,6 +27,7 @@ import {
 
 import log from "electron-log";
 import dayjs from "dayjs";
+import { EngineHostSetting } from "./store/type";
 
 // silly以上のログをコンソールに出力
 log.transports.console.format = "[{h}:{i}:{s}.{ms}] [{level}] {text}";
@@ -46,6 +47,16 @@ if (isDevelopment) {
     path.join(app.getPath("appData"), `${app.getName()}-dev`)
   );
 }
+
+const defaultEngineHosts = (() => {
+  const engineHostsEnv = process.env.VUE_APP_ENGINE_HOSTS;
+
+  if (engineHostsEnv) {
+    return JSON.parse(engineHostsEnv) as EngineHostSetting[];
+  }
+
+  return [];
+})();
 
 let win: BrowserWindow;
 
@@ -152,6 +163,7 @@ const store = new Store<{
   useGpu: boolean;
   inheritAudioInfo: boolean;
   savingSetting: SavingSetting;
+  engineHosts: EngineHostSetting[];
   presets: PresetConfig;
   hotkeySettings: HotkeySetting[];
   toolbarSetting: ToolbarSetting;
@@ -196,6 +208,17 @@ const store = new Store<{
         outputSamplingRate: 24000,
         audioOutputDevice: "default",
       },
+    },
+    engineHosts: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string" },
+          host: { type: "string" },
+        },
+      },
+      default: defaultEngineHosts,
     },
     // To future developers: if you are to modify the store schema with array type,
     // for example, the hotkeySettings below,
@@ -279,7 +302,15 @@ const store = new Store<{
 // engine
 let willQuitEngine = false;
 let engineProcess: ChildProcess;
-async function runEngine() {
+
+async function runEngineAll() {
+  const engineHosts = store.get("engineHosts");
+  for (const engineHost of engineHosts) {
+    await runEngine(engineHost.key);
+  }
+}
+
+async function runEngine(engineKey: string) {
   willQuitEngine = false;
 
   // 最初のエンジンモード
@@ -303,6 +334,10 @@ async function runEngine() {
   const useGpu = store.get("useGpu");
   const inheritAudioInfo = store.get("inheritAudioInfo");
 
+  if (!process.env.ENGINE_PATH) {
+    return;
+  }
+
   log.info(`Starting ENGINE in ${useGpu ? "GPU" : "CPU"} mode`);
 
   // エンジンプロセスの起動
@@ -310,6 +345,7 @@ async function runEngine() {
     appDirPath,
     process.env.ENGINE_PATH ?? "run.exe"
   );
+
   const args = useGpu ? ["--use_gpu"] : [];
 
   engineProcess = spawn(enginePath, args, {
@@ -329,7 +365,7 @@ async function runEngine() {
     log.info(`ENGINE: exited with code ${code}`);
 
     if (!willQuitEngine) {
-      ipcMainSend(win, "DETECTED_ENGINE_ERROR");
+      ipcMainSend(win, "DETECTED_ENGINE_ERROR", { engineKey });
       dialog.showErrorBox(
         "音声合成エンジンエラー",
         "音声合成エンジンが異常終了しました。エンジンを再起動してください。"
@@ -659,13 +695,23 @@ ipcMainHandle("LOG_INFO", (_, ...params) => {
   log.info(...params);
 });
 
+ipcMainHandle("RESTART_ENGINE_ALL", () => {
+  const engineHosts = store.get("engineHosts");
+
+  for (const engineHost of engineHosts) {
+    log.info(`ENGINE ${engineHost.key}: ${engineHost.host}`);
+    ipcMainSend(win, "RESTART_ENGINE", { engineKey: engineHost.key });
+    break;
+  }
+});
+
 /**
  * エンジンを再起動する。
  * エンジンの起動が開始したらresolve、起動が失敗したらreject。
  */
 ipcMainHandle(
   "RESTART_ENGINE",
-  () =>
+  (_, { engineKey }) =>
     new Promise<void>((resolve, reject) => {
       log.info(
         `Restarting ENGINE (last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode})`
@@ -680,7 +726,7 @@ ipcMainHandle(
           "ENGINE process is not started yet or already killed. Starting ENGINE..."
         );
 
-        runEngine();
+        runEngine(engineKey);
         resolve();
         return;
       }
@@ -693,7 +739,7 @@ ipcMainHandle(
       const restartEngineOnProcessClosedCallback = () => {
         log.info("ENGINE process killed. Restarting ENGINE...");
 
-        runEngine();
+        runEngine(engineKey);
         resolve();
       };
       engineProcess.once("close", restartEngineOnProcessClosedCallback);
@@ -885,7 +931,7 @@ app.on("ready", async () => {
     }
   }
 
-  createWindow().then(() => runEngine());
+  createWindow().then(() => runEngineAll());
 });
 
 app.on("second-instance", () => {

@@ -127,8 +127,13 @@ type IpcIHData = {
     return: void;
   };
 
-  RESTART_ENGINE: {
+  RESTART_ENGINE_ALL: {
     args: [];
+    return: void;
+  };
+
+  RESTART_ENGINE: {
+    args: [obj: { engineKey: string }];
     return: void;
   };
 
@@ -231,8 +236,13 @@ type IpcSOData = {
     return: void;
   };
 
+  RESTART_ENGINE: {
+    args: [obj: { engineKey: string }];
+    return: void;
+  };
+
   DETECTED_ENGINE_ERROR: {
-    args: [];
+    args: [obj: { engineKey: string }];
     return: void;
   };
 

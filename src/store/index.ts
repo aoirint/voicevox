@@ -47,7 +47,11 @@ export const indexStore: VoiceVoxStoreOptions<
       if (state.audioKeys.length === 1) {
         const audioItem = state.audioItems[state.audioKeys[0]];
         if (audioItem.text === "") {
-          const characterInfo = state.characterInfos?.find(
+          const flattenCharacterInfos = Object.entries(
+            state.characterInfos ?? {}
+          ).flatMap(([, infos]) => infos);
+
+          const characterInfo = flattenCharacterInfos.find(
             (info) =>
               info.metas.styles.find(
                 (style) => style.styleId == audioItem.styleId
@@ -106,10 +110,16 @@ export const indexStore: VoiceVoxStoreOptions<
         const characterInfos = await state.characterInfos;
         if (characterInfos == undefined)
           throw new Error("state.characterInfos == undefined");
-        const defaultStyleIds = characterInfos.map<DefaultStyleId>((info) => ({
-          speakerUuid: info.metas.speakerUuid,
-          defaultStyleId: info.metas.styles[0].styleId,
-        }));
+
+        const flattenCharacterInfos = Object.entries(characterInfos).flatMap(
+          ([, infos]) => infos
+        );
+        const defaultStyleIds = flattenCharacterInfos.map<DefaultStyleId>(
+          (info) => ({
+            speakerUuid: info.metas.speakerUuid,
+            defaultStyleId: info.metas.styles[0].styleId,
+          })
+        );
         commit("SET_DEFAULT_STYLE_IDS", { defaultStyleIds });
       } else {
         commit("SET_DEFAULT_STYLE_IDS", {

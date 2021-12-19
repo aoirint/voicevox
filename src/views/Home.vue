@@ -379,8 +379,14 @@ export default defineComponent({
       await store.dispatch("LOAD_DEFAULT_STYLE_IDS");
 
       let isUnsetDefaultStyleIds = false;
-      if (characterInfos.value == undefined) throw new Error();
-      for (const info of characterInfos.value) {
+      if (characterInfos.value == undefined)
+        throw new Error("assert characterInfos != undefined");
+
+      const flattenCharacterInfos = Object.entries(
+        characterInfos.value
+      ).flatMap(([, infos]) => infos);
+
+      for (const info of flattenCharacterInfos) {
         isUnsetDefaultStyleIds ||= await store.dispatch(
           "IS_UNSET_DEFAULT_STYLE_ID",
           { speakerUuid: info.metas.speakerUuid }
@@ -435,7 +441,9 @@ export default defineComponent({
     });
 
     // デフォルトスタイル選択
-    const characterInfos = computed(() => store.state.characterInfos);
+    const characterInfos = computed(() =>
+      Object.entries(store.state.characterInfos).flatMap(([, infos]) => infos)
+    );
     const isDefaultStyleSelectDialogOpenComputed = computed({
       get: () => store.state.isDefaultStyleSelectDialogOpen,
       set: (val) =>

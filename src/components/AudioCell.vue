@@ -21,7 +21,7 @@
       >
         <q-list>
           <q-item
-            v-for="(characterInfo, characterIndex) in characterInfos"
+            v-for="(characterInfo, characterIndex) in flattenCharacterInfos"
             :key="characterIndex"
             class="q-pa-none"
           >
@@ -177,6 +177,10 @@ export default defineComponent({
   setup(props, { emit }) {
     const store = useStore();
     const characterInfos = computed(() => store.state.characterInfos);
+    const flattenCharacterInfos = computed(() =>
+      Object.entries(store.state.characterInfos).flatMap(([, infos]) => infos)
+    );
+
     const audioItem = computed(() => store.state.audioItems[props.audioKey]);
     const nowPlaying = computed(
       () => store.state.audioStates[props.audioKey].nowPlaying
@@ -190,8 +194,8 @@ export default defineComponent({
     const selectedCharacterInfo = computed(() =>
       store.state.characterInfos !== undefined &&
       audioItem.value.styleId !== undefined
-        ? store.state.engineKeys
-            .flatMap((engineKey) => store.state.characterInfos[engineKey]) // styleId is unique between engines
+        ? Object.entries(store.state.characterInfos)
+            .flatMap(([, infos]) => infos) // styleId is unique between engines
             .find((info) =>
               info.metas.styles.find(
                 (style) => style.styleId === audioItem.value.styleId // styleId is unique between speakers in a engine
@@ -206,12 +210,14 @@ export default defineComponent({
     );
 
     const subMenuOpenFlags = ref(
-      [...Array(characterInfos.value?.length)].map(() => false)
+      [...Array(flattenCharacterInfos.value?.length)].map(() => false)
     );
 
     const reassignSubMenuOpen = debounce((idx: number) => {
       if (subMenuOpenFlags.value[idx]) return;
-      const arr = [...Array(characterInfos.value?.length)].map(() => false);
+      const arr = [...Array(flattenCharacterInfos.value?.length)].map(
+        () => false
+      );
       arr[idx] = true;
       subMenuOpenFlags.value = arr;
     }, 100);
@@ -254,7 +260,7 @@ export default defineComponent({
       });
     };
     const getDefaultStyle = (speakerUuid: string) => {
-      const characterInfo = characterInfos.value?.find(
+      const characterInfo = flattenCharacterInfos.value?.find(
         (info) => info.metas.speakerUuid === speakerUuid
       );
       const defaultStyleId = store.state.defaultStyleIds.find(
@@ -396,6 +402,7 @@ export default defineComponent({
 
     return {
       characterInfos,
+      flattenCharacterInfos,
       audioItem,
       deleteButtonEnable,
       uiLocked,

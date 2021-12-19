@@ -16,7 +16,11 @@ export default defineComponent({
     const store = useStore();
 
     const characterInfo = computed(() => {
-      const characterInfos = store.state.characterInfos || [];
+      // const characterInfos = store.state.characterInfos || [];
+      const flattenCharacterInfos = Object.entries(
+        store.state.characterInfos || {}
+      ).flatMap(([, infos]) => infos);
+
       const activeAudioKey: string | undefined = store.getters.ACTIVE_AUDIO_KEY;
       const audioItem = activeAudioKey
         ? store.state.audioItems[activeAudioKey]
@@ -24,7 +28,7 @@ export default defineComponent({
       const styleId = audioItem?.styleId;
 
       return styleId !== undefined
-        ? characterInfos.find((info) =>
+        ? flattenCharacterInfos.find((info) =>
             info.metas.styles.find((style) => style.styleId === styleId)
           )
         : undefined;

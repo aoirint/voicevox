@@ -17,6 +17,7 @@ import {
   AudioCommandStoreState,
   VoiceVoxStoreOptions,
   IEngineConnectorFactoryActions,
+  EngineHostSetting,
 } from "./type";
 import { createUILockAction } from "./ui";
 import {
@@ -53,7 +54,7 @@ async function generateUniqueIdAndQuery(
 function parseTextFile(
   body: string,
   defaultStyleIds: DefaultStyleId[],
-  characterInfos?: CharacterInfo[]
+  characterInfos?: Record<string, CharacterInfo[]>
 ): AudioItem[] {
   const characters = new Map<string, number>();
   {
@@ -63,7 +64,11 @@ function parseTextFile(
       const styleId = defaultStyleId.defaultStyleId;
       uuid2StyleIds.set(speakerUuid, styleId);
     }
-    for (const characterInfo of characterInfos || []) {
+
+    const flattenCharacterInfos = Object.entries(characterInfos || {}).flatMap(
+      ([, infos]) => infos
+    );
+    for (const characterInfo of flattenCharacterInfos) {
       const uuid = characterInfo.metas.speakerUuid;
       const styleId =
         uuid2StyleIds.get(uuid) ?? characterInfo.metas.styles[0].styleId;
@@ -94,7 +99,12 @@ function buildFileName(state: State, audioKey: string) {
   const index = state.audioKeys.indexOf(audioKey);
   const audioItem = state.audioItems[audioKey];
   let styleName: string | undefined = "";
-  const character = state.characterInfos?.find((info) => {
+
+  const flattenCharacterInfos = Object.entries(
+    state.characterInfos || {}
+  ).flatMap(([, infos]) => infos);
+
+  const character = flattenCharacterInfos.find((info) => {
     const result = info.metas.styles.findIndex(
       (style) => style.styleId === audioItem.styleId
     );
@@ -125,11 +135,29 @@ function buildFileName(state: State, audioKey: string) {
   return preFileName + `_${characterName}（${styleName}）_${text}.wav`;
 }
 
+function getEngineHostByStyleId(
+  state: State,
+  styleId: number
+): EngineHostSetting | undefined {
+  const characterInfos = state.characterInfos ?? {};
+  const flattenCharacterInfos = Object.entries(characterInfos).flatMap(
+    ([, infos]) => infos
+  );
+
+  const engineKey = flattenCharacterInfos.find((info) =>
+    info.metas.styles.find((style) => style.styleId === styleId)
+  )?.metas?.engineKey;
+  const engineHost = state.engineHosts.find(
+    (engineHost) => engineHost.key === engineKey
+  );
+
+  return engineHost;
+}
+
 const audioBlobCache: Record<string, Blob> = {};
 const audioElements: Record<string, HTMLAudioElement> = {};
 
 export const audioStoreState: AudioStoreState = {
-  engineKeys: [],
   engineStates: {},
   characterInfos: {},
   audioItems: {},
@@ -452,18 +480,23 @@ export const audioStore: VoiceVoxStoreOptions<
   actions: {
     START_WAITING_ENGINE_ALL: createUILockAction(
       async ({ state, dispatch }) => {
-        const engineKeys = state.engineKeys;
+        const engineHosts = state.engineHosts;
 
-        for (const engineKey of engineKeys) {
+        for (const engineHost of engineHosts) {
           await dispatch("START_WAITING_ENGINE", {
-            engineKey,
+            engineKey: engineHost.key,
           });
         }
       }
     ),
     START_WAITING_ENGINE: createUILockAction(
       async ({ state, commit, dispatch }, { engineKey }) => {
-        const engineHost = engineKey;
+        const engineHost = state.engineHosts.find(
+          (engineHost) => engineHost.key === engineKey
+        );
+        if (engineHost == undefined)
+          throw new Error("assert engineHost != undefined");
+
         let engineState = state.engineStates[engineKey];
 
         for (let i = 0; i < 100; i++) {
@@ -473,7 +506,7 @@ export const audioStore: VoiceVoxStoreOptions<
 
           try {
             await dispatch("INVOKE_ENGINE_CONNECTOR", {
-              host: engineHost,
+              host: engineHost.host,
               action: "versionVersionGet",
               payload: [],
             }).then(toDispatchResponse("versionVersionGet"));
@@ -496,20 +529,24 @@ export const audioStore: VoiceVoxStoreOptions<
       }
     ),
     LOAD_CHARACTER_ALL: createUILockAction(async ({ state, dispatch }) => {
-      const engineKeys = state.engineKeys;
+      const engineHosts = state.engineHosts;
 
-      for (const engineKey of engineKeys) {
+      for (const engineHost of engineHosts) {
         await dispatch("LOAD_CHARACTER", {
-          engineKey,
+          engineKey: engineHost.key,
         });
       }
     }),
     LOAD_CHARACTER: createUILockAction(
       async ({ state, commit, dispatch }, { engineKey }) => {
-        const engineHost = engineKey;
+        const engineHost = state.engineHosts.find(
+          (engineHost) => engineHost.key === engineKey
+        );
+        if (engineHost == undefined)
+          throw new Error("assert engineHost != undefined");
 
         const speakers = await dispatch("INVOKE_ENGINE_CONNECTOR", {
-          host: engineHost,
+          host: engineHost.host,
           action: "speakersSpeakersGet",
           payload: [],
         })
@@ -550,7 +587,7 @@ export const audioStore: VoiceVoxStoreOptions<
         };
         const getSpeakerInfo = async function (speaker: Speaker) {
           const speakerInfo = await dispatch("INVOKE_ENGINE_CONNECTOR", {
-            host: engineHost,
+            host: engineHost.host,
             action: "speakerInfoSpeakerInfoGet",
             payload: [{ speakerUuid: speaker.speakerUuid }],
           })
@@ -563,6 +600,7 @@ export const audioStore: VoiceVoxStoreOptions<
           const characterInfo: CharacterInfo = {
             portraitPath: base64ToUrl(speakerInfo.portrait, "image/png"),
             metas: {
+              engineKey: engineKey,
               speakerUuid: speaker.speakerUuid,
               speakerName: speaker.name,
               styles: styles,
@@ -606,16 +644,30 @@ export const audioStore: VoiceVoxStoreOptions<
         throw new Error("state.defaultStyleIds == undefined");
       if (state.characterInfos == undefined)
         throw new Error("state.characterInfos == undefined");
-      const characterInfos = state.characterInfos;
+      const characterInfos = state.characterInfos ?? {};
+      const flattenCharacterInfos = Object.entries(characterInfos).flatMap(
+        ([, infos]) => infos
+      );
+
+      if (flattenCharacterInfos.length === 0)
+        throw new Error("flattenCharacterInfos.length != 0");
 
       const text = payload.text ?? "";
-      const styleId =
-        payload.styleId ??
-        state.defaultStyleIds[
-          state.defaultStyleIds.findIndex(
-            (x) => x.speakerUuid === characterInfos[0].metas.speakerUuid // FIXME: defaultStyleIds内にspeakerUuidがない場合がある
-          )
-        ].defaultStyleId;
+
+      const fallbackSpeakerUuid =
+        flattenCharacterInfos.length !== 0
+          ? flattenCharacterInfos[0].metas.speakerUuid
+          : undefined;
+      const fallbackStyleIndex = state.defaultStyleIds.findIndex(
+        (x) => x.speakerUuid === fallbackSpeakerUuid // FIXME: defaultStyleIds内にspeakerUuidがない場合がある
+      );
+      const fallbackStyleId =
+        fallbackStyleIndex !== -1
+          ? state.defaultStyleIds[fallbackStyleIndex].defaultStyleId
+          : undefined;
+
+      const styleId = payload.styleId ?? fallbackStyleId ?? 0;
+
       const baseAudioItem = payload.baseAudioItem;
       const query = getters.IS_ENGINE_READY
         ? await dispatch("FETCH_AUDIO_QUERY", {
@@ -681,14 +733,19 @@ export const audioStore: VoiceVoxStoreOptions<
       commit("SET_AUDIO_QUERY", payload);
     },
     FETCH_ACCENT_PHRASES(
-      { dispatch },
+      { state, dispatch },
       {
         text,
         styleId,
         isKana,
       }: { text: string; styleId: number; isKana?: boolean }
     ) {
+      const engineHost = getEngineHostByStyleId(state, styleId);
+      if (engineHost == undefined)
+        throw new Error("assert engineHost != undefined");
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engineHost.host,
         action: "accentPhrasesAccentPhrasesPost",
         payload: [
           {
@@ -708,13 +765,18 @@ export const audioStore: VoiceVoxStoreOptions<
         });
     },
     FETCH_MORA_DATA(
-      { dispatch },
+      { state, dispatch },
       {
         accentPhrases,
         styleId,
       }: { accentPhrases: AccentPhrase[]; styleId: number }
     ) {
+      const engineHost = getEngineHostByStyleId(state, styleId);
+      if (engineHost == undefined)
+        throw new Error("assert engineHost != undefined");
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engineHost.host,
         action: "moraDataMoraDataPost",
         payload: [{ accentPhrase: accentPhrases, speaker: styleId }],
       })
@@ -754,10 +816,15 @@ export const audioStore: VoiceVoxStoreOptions<
       return accentPhrases;
     },
     FETCH_AUDIO_QUERY(
-      { dispatch },
+      { state, dispatch },
       { text, styleId }: { text: string; styleId: number }
     ) {
+      const engineHost = getEngineHostByStyleId(state, styleId);
+      if (engineHost == undefined)
+        throw new Error("assert engineHost != undefined");
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engineHost.host,
         action: "audioQueryAudioQueryPost",
         payload: [{ text, speaker: styleId }],
       })
@@ -825,8 +892,19 @@ export const audioStore: VoiceVoxStoreOptions<
       }
     ),
     CONNECT_AUDIO: createUILockAction(
-      async ({ dispatch }, { encodedBlobs }: { encodedBlobs: string[] }) => {
+      async (
+        { state, dispatch },
+        { encodedBlobs }: { encodedBlobs: string[] }
+      ) => {
+        const defaultStyleId = state.defaultStyleIds[0]?.defaultStyleId;
+
+        // FIXME: specify default engine
+        const engineHost = getEngineHostByStyleId(state, defaultStyleId);
+        if (engineHost == undefined)
+          throw new Error("assert engineHost != undefined");
+
         return dispatch("INVOKE_ENGINE_CONNECTOR", {
+          host: engineHost.host,
           action: "connectWavesConnectWavesPost",
           payload: [
             {
@@ -854,17 +932,22 @@ export const audioStore: VoiceVoxStoreOptions<
           state,
           audioItem
         );
-        const speaker = audioItem.styleId;
-        if (audioQuery == undefined || speaker == undefined) {
+        const styleId = audioItem.styleId;
+        if (audioQuery == undefined || styleId == undefined) {
           return null;
         }
 
+        const engineHost = getEngineHostByStyleId(state, styleId);
+        if (engineHost == undefined)
+          throw new Error("assert engineHost != undefined");
+
         return dispatch("INVOKE_ENGINE_CONNECTOR", {
+          host: engineHost.host,
           action: "synthesisSynthesisPost",
           payload: [
             {
               audioQuery,
-              speaker,
+              speaker: styleId,
             },
           ],
         })
@@ -1279,24 +1362,36 @@ export const audioStore: VoiceVoxStoreOptions<
     OPEN_TEXT_EDIT_CONTEXT_MENU() {
       window.electron.openTextEditContextMenu();
     },
-    DETECTED_ENGINE_ERROR({ state, commit }) {
+    DETECTED_ENGINE_ERROR({ state, commit }, { engineKey }) {
       switch (state.engineState) {
         case "STARTING":
-          commit("SET_ENGINE_STATE", { engineState: "FAILED_STARTING" });
+          commit("SET_ENGINE_STATE", {
+            engineKey,
+            engineState: "FAILED_STARTING",
+          });
           break;
         case "READY":
-          commit("SET_ENGINE_STATE", { engineState: "ERROR" });
+          commit("SET_ENGINE_STATE", { engineKey, engineState: "ERROR" });
           break;
         default:
-          commit("SET_ENGINE_STATE", { engineState: "ERROR" });
+          commit("SET_ENGINE_STATE", { engineKey, engineState: "ERROR" });
       }
     },
-    async RESTART_ENGINE({ dispatch, commit }) {
-      await commit("SET_ENGINE_STATE", { engineState: "STARTING" });
+    async RESTART_ENGINE_ALL({ state, dispatch }) {
+      const engineHosts = state.engineHosts;
+
+      for (const engineHost of engineHosts) {
+        await dispatch("RESTART_ENGINE", {
+          engineKey: engineHost.key,
+        });
+      }
+    },
+    async RESTART_ENGINE({ dispatch, commit }, { engineKey }) {
+      await commit("SET_ENGINE_STATE", { engineKey, engineState: "STARTING" });
       window.electron
-        .restartEngine()
-        .then(() => dispatch("START_WAITING_ENGINE"))
-        .catch(() => dispatch("DETECTED_ENGINE_ERROR"));
+        .restartEngine(engineKey)
+        .then(() => dispatch("START_WAITING_ENGINE", { engineKey }))
+        .catch(() => dispatch("DETECTED_ENGINE_ERROR", { engineKey }));
     },
     CHECK_FILE_EXISTS(_, { file }: { file: string }) {
       return window.electron.checkFileExists(file);

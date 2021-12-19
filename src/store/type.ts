@@ -68,7 +68,6 @@ export type QuasarDialog = QVueGlobals["dialog"];
  */
 
 export type AudioStoreState = {
-  engineKeys: string[];
   engineStates: Record<string, EngineState>;
   characterInfos: Record<string, CharacterInfo[]>;
   audioItems: Record<string, AudioItem>;
@@ -103,12 +102,16 @@ type AudioStoreTypes = {
     action(payload: { engineKey: string }): void;
   };
 
-  RESTART_ENGINE: {
+  RESTART_ENGINE_ALL: {
     action(): void;
   };
 
+  RESTART_ENGINE: {
+    action(payload: { engineKey: string }): void;
+  };
+
   DETECTED_ENGINE_ERROR: {
-    action(): void;
+    action(payload: { engineKey: string }): void;
   };
 
   SET_ENGINE_STATE: {
@@ -683,11 +686,16 @@ export type ProjectActions = StoreType<ProjectStoreTypes, "action">;
  * Setting Store Types
  */
 
+export type EngineHostSetting = {
+  key: string;
+  host: string;
+};
+
 export type SettingStoreState = {
   savingSetting: SavingSetting;
   hotkeySettings: HotkeySetting[];
   toolbarSetting: ToolbarSetting;
-  engineHosts: string[];
+  engineHosts: EngineHostSetting[];
   themeSetting: ThemeSetting;
   acceptRetrieveTelemetry: AcceptRetrieveTelemetryStatus;
 };

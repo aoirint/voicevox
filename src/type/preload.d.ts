@@ -47,7 +47,8 @@ export interface Sandbox {
   maximizeWindow(): void;
   logError(...params: unknown[]): void;
   logInfo(...params: unknown[]): void;
-  restartEngine(): Promise<void>;
+  restartEngineAll(): Promise<void>;
+  restartEngine(engineKey: string): Promise<void>;
   savingSetting(newData?: SavingSetting): Promise<SavingSetting>;
   hotkeySettings(newData?: HotkeySetting): Promise<HotkeySetting[]>;
   toolbarSetting(newData?: ToolbarSetting): Promise<ToolbarSetting>;
@@ -92,6 +93,7 @@ export type MetasJson = {
 export type CharacterInfo = {
   portraitPath: string;
   metas: {
+    engineKey: string;
     speakerUuid: string;
     speakerName: string;
     styles: StyleInfo[];

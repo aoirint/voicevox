@@ -57,7 +57,12 @@ describe("store/vuex.js test", () => {
         hotkeySettings: [],
         toolbarSetting: [],
         acceptRetrieveTelemetry: "Unconfirmed",
-        engineHost: "http://127.0.0.1",
+        engineHosts: [
+          {
+            key: "88022f86-c823-436e-85a3-500c629749c4",
+            host: "http://127.0.0.1",
+          },
+        ],
       },
       getters: {
         ...uiStore.getters,
