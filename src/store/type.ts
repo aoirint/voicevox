@@ -688,6 +688,7 @@ export type ProjectActions = StoreType<ProjectStoreTypes, "action">;
 
 export type EngineHostSetting = {
   key: string;
+  executablePath: string;
   host: string;
 };
 

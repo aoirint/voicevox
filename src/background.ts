@@ -215,6 +215,7 @@ const store = new Store<{
         type: "object",
         properties: {
           key: { type: "string" },
+          executablePath: { type: "string" },
           host: { type: "string" },
         },
       },
@@ -310,6 +311,15 @@ async function runEngineAll() {
 }
 
 async function runEngine(engineKey: string) {
+  const engineHosts = store.get("engineHosts");
+  const engineHost = engineHosts.find(
+    (engineHost) => engineHost.key === engineKey
+  );
+  if (engineHost == undefined)
+    throw new Error("assert engineHost != undefined");
+
+  if (!engineHost.executablePath) return; // Skip engine start if empty
+
   willQuitEngine = false;
 
   // 最初のエンジンモード
@@ -333,17 +343,10 @@ async function runEngine(engineKey: string) {
   const useGpu = store.get("useGpu");
   const inheritAudioInfo = store.get("inheritAudioInfo");
 
-  if (!process.env.ENGINE_PATH) {
-    return; // Skip engine start if empty
-  }
-
   log.info(`Starting ENGINE in ${useGpu ? "GPU" : "CPU"} mode`);
 
   // エンジンプロセスの起動
-  const enginePath = path.resolve(
-    appDirPath,
-    process.env.ENGINE_PATH ?? "run.exe"
-  );
+  const enginePath = path.resolve(appDirPath, engineHost.executablePath);
   const args = useGpu ? ["--use_gpu"] : [];
 
   engineProcess = spawn(enginePath, args, {
