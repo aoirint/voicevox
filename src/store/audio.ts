@@ -41,6 +41,7 @@ async function generateUniqueIdAndQuery(
     audioQuery.outputStereo = state.savingSetting.outputStereo;
   }
 
+  // TODO: include engine key info
   const data = new TextEncoder().encode(
     JSON.stringify([
       audioItem.text,
@@ -76,6 +77,7 @@ function parseTextFile(
         uuid2StyleIds.get(speakerUuid) ?? characterInfo.metas.styles[0].styleId;
       const speakerName = characterInfo.metas.speakerName;
 
+      // FIXME: assert UniqueVoiceKey is valid
       const uniqueVoiceKey: UniqueVoiceKey = {
         speakerUuid,
         styleId,
@@ -591,6 +593,8 @@ export const audioStore: VoiceVoxStoreOptions<
             (x) => x.speakerUuid === characterInfos[0].metas.speakerUuid // FIXME: defaultStyleIds内にspeakerUuidがない場合がある
           )
         ];
+      
+      // FIXME: assert UniqueVoiceKey is valid
       const defaultUniqueVoiceKey: UniqueVoiceKey = {
         speakerUuid: defaultStyleId.speakerUuid,
         styleId: defaultStyleId.defaultStyleId,
@@ -1325,7 +1329,7 @@ export const audioCommandStore: VoiceVoxStoreOptions<
     ) {
       const uniqueVoiceKey = state.audioItems[audioKey].uniqueVoiceKey;
       if (uniqueVoiceKey == undefined)
-        throw new Error("uniqueVoiceKey != undefined");
+        throw new Error("assert uniqueVoiceKey != undefined");
       const query: AudioQuery | undefined = state.audioItems[audioKey].query;
       try {
         if (query !== undefined) {
@@ -1431,7 +1435,7 @@ export const audioCommandStore: VoiceVoxStoreOptions<
         try {
           const uniqueVoiceKey = state.audioItems[audioKey].uniqueVoiceKey;
           if (uniqueVoiceKey == undefined)
-            throw new Error("uniqueVoiceKey != undefined");
+            throw new Error("assert uniqueVoiceKey != undefined");
           const resultAccentPhrases: AccentPhrase[] = await dispatch(
             "FETCH_AND_COPY_MORA_DATA",
             {
@@ -1473,7 +1477,7 @@ export const audioCommandStore: VoiceVoxStoreOptions<
       const query: AudioQuery | undefined = state.audioItems[audioKey].query;
       const uniqueVoiceKey = state.audioItems[audioKey].uniqueVoiceKey;
       if (uniqueVoiceKey == undefined)
-        throw new Error("uniqueVoiceKey != undefined");
+        throw new Error("assert uniqueVoiceKey != undefined");
       if (query === undefined) {
         throw Error(
           "`COMMAND_CHANGE_ACCENT_PHRASE_SPLIT` should not be called if the query does not exist."
@@ -1584,7 +1588,7 @@ export const audioCommandStore: VoiceVoxStoreOptions<
     ) {
       const uniqueVoiceKey = state.audioItems[audioKey].uniqueVoiceKey;
       if (uniqueVoiceKey == undefined)
-        throw new Error("uniqueVoiceKey != undefined");
+        throw new Error("assert uniqueVoiceKey != undefined");
 
       let newAccentPhrasesSegment: AccentPhrase[] | undefined = undefined;
 

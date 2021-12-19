@@ -52,14 +52,14 @@ export const indexStore: VoiceVoxStoreOptions<
               info.metas.speakerUuid === audioItem.uniqueVoiceKey?.speakerUuid
           );
           if (characterInfo == undefined)
-            throw new Error("characterInfo == undefined");
+            throw new Error("assert characterInfo != undefined");
 
           const speakerUuid = characterInfo.metas.speakerUuid;
           const defaultStyleId = defaultStyleIds.find(
             (styleId) => speakerUuid == styleId.speakerUuid
           )?.defaultStyleId;
           if (defaultStyleId == undefined)
-            throw new Error("defaultStyleId == undefined");
+            throw new Error("assert defaultStyleId != undefined");
 
           audioItem.uniqueVoiceKey = {
             speakerUuid: speakerUuid,
