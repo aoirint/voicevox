@@ -593,7 +593,7 @@ export const audioStore: VoiceVoxStoreOptions<
             (x) => x.speakerUuid === characterInfos[0].metas.speakerUuid // FIXME: defaultStyleIds内にspeakerUuidがない場合がある
           )
         ];
-      
+
       // FIXME: assert UniqueVoiceKey is valid
       const defaultUniqueVoiceKey: UniqueVoiceKey = {
         speakerUuid: defaultStyleId.speakerUuid,
