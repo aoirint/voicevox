@@ -498,9 +498,7 @@ function killEngine({
   const engineNotKilled = engineProcess.signalCode === null;
 
   if (engineNotExited && engineNotKilled) {
-    log.info(
-      `ENGINE ${engineKey}: Killing process (PID=${engineProcess.pid})`
-    );
+    log.info(`ENGINE ${engineKey}: Killing process (PID=${engineProcess.pid})`);
     onKillStart?.();
 
     engineContainer.willQuitEngine = true;
@@ -540,9 +538,7 @@ function killEngineAll({
       },
       onKilled: () => {
         numEngineKilled++;
-        log.info(
-          `ENGINE ${numEngineKilled} / ${numEngines} processes killed`
-        );
+        log.info(`ENGINE ${numEngineKilled} / ${numEngines} processes killed`);
 
         if (numEngineKilled === numEngines) {
           onAllKilled?.();
@@ -992,7 +988,7 @@ app.on("web-contents-created", (e, contents) => {
 });
 
 app.on("window-all-closed", () => {
-  log.info("All windows closed. Quitting app")
+  log.info("All windows closed. Quitting app");
   app.quit();
 });
 
