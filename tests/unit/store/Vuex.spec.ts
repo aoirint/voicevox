@@ -60,6 +60,7 @@ describe("store/vuex.js test", () => {
         engineHosts: [
           {
             key: "88022f86-c823-436e-85a3-500c629749c4",
+            executablePath: "",
             host: "http://127.0.0.1",
           },
         ],
