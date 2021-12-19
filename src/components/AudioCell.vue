@@ -189,16 +189,14 @@ export default defineComponent({
 
     const selectedCharacterInfo = computed(() =>
       store.state.characterInfos !== undefined &&
-      audioItem.value.styleId !== undefined // TODO: fix here
-        ? Object.entries(store.state.characterInfos)
-            .find(([, infos]) =>
-              infos.find((info) =>
-                info.metas.styles.find(
-                  (style) => style.styleId === audioItem.value.styleId
-                )
+      audioItem.value.styleId !== undefined
+        ? store.state.engineKeys
+            .flatMap((engineKey) => store.state.characterInfos[engineKey]) // styleId is unique between engines
+            .find((info) =>
+              info.metas.styles.find(
+                (style) => style.styleId === audioItem.value.styleId // styleId is unique between speakers
               )
             )
-            .map([, info])
         : undefined
     );
     const selectedStyle = computed(() =>

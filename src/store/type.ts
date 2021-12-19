@@ -27,8 +27,6 @@ import { QVueGlobals } from "quasar";
 
 export type AudioItem = {
   text: string;
-  engineKey?: string;
-  speakerUuid?: string; // https://github.com/VOICEVOX/voicevox/pull/279
   styleId?: number;
   query?: AudioQuery;
   presetKey?: string;
