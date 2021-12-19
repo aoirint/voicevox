@@ -49,10 +49,10 @@ if (isDevelopment) {
 }
 
 const defaultEngineHosts = (() => {
-  const engineHostsEnv = process.env.VUE_APP_ENGINE_HOSTS;
+  const defaultEngineHostsEnv = process.env.VUE_APP_DEFAULT_ENGINE_HOSTS;
 
-  if (engineHostsEnv) {
-    return JSON.parse(engineHostsEnv) as EngineHostSetting[];
+  if (defaultEngineHostsEnv) {
+    return JSON.parse(defaultEngineHostsEnv) as EngineHostSetting[];
   }
 
   return [];
