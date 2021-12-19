@@ -666,7 +666,8 @@ export const audioStore: VoiceVoxStoreOptions<
           ? state.defaultStyleIds[fallbackStyleIndex].defaultStyleId
           : undefined;
 
-      const styleId = payload.styleId ?? fallbackStyleId ?? 0;
+      const styleId = payload.styleId ?? fallbackStyleId;
+      if (styleId == undefined) throw new Error("assert styleId != undefined");
 
       const baseAudioItem = payload.baseAudioItem;
       const query = getters.IS_ENGINE_READY
