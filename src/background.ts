@@ -372,6 +372,60 @@ async function runEngine(engineKey: string) {
   });
 }
 
+function restartEngine(engineKey: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    log.info(
+      `Restarting ENGINE (last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode})`
+    );
+
+    // エンジンのプロセスがすでに終了している、またはkillされている場合
+    const engineExited = engineProcess.exitCode !== null;
+    const engineKilled = engineProcess.signalCode !== null;
+
+    if (engineExited || engineKilled) {
+      log.info(
+        "ENGINE process is not started yet or already killed. Starting ENGINE..."
+      );
+
+      runEngine(engineKey);
+      resolve();
+      return;
+    }
+
+    // エンジンエラー時のエラーウィンドウ抑制用。
+    willQuitEngine = true;
+
+    // 「killに使用するコマンドが終了するタイミング」と「OSがプロセスをkillするタイミング」が違うので単純にtreeKillのコールバック関数でrunEngine()を実行すると失敗します。
+    // closeイベントはexitイベントよりも後に発火します。
+    const restartEngineOnProcessClosedCallback = () => {
+      log.info("ENGINE process killed. Restarting ENGINE...");
+
+      runEngine(engineKey);
+      resolve();
+    };
+    engineProcess.once("close", restartEngineOnProcessClosedCallback);
+
+    // treeKillのコールバック関数はコマンドが終了した時に呼ばれます。
+    log.info(`Killing current ENGINE process (PID=${engineProcess.pid})...`);
+    treeKill(engineProcess.pid, (error) => {
+      // error変数の値がundefined以外であればkillコマンドが失敗したことを意味します。
+      if (error != null) {
+        log.error("Failed to kill ENGINE");
+        log.error(error);
+
+        // killに失敗したとき、closeイベントが発生せず、once listenerが消費されない
+        // listenerを削除してENGINEの意図しない再起動を防止
+        engineProcess.removeListener(
+          "close",
+          restartEngineOnProcessClosedCallback
+        );
+
+        reject();
+      }
+    });
+  });
+}
+
 // temp dir
 const tempDir = path.join(app.getPath("temp"), "VOICEVOX");
 if (!fs.existsSync(tempDir)) {
@@ -693,12 +747,11 @@ ipcMainHandle("LOG_INFO", (_, ...params) => {
   log.info(...params);
 });
 
-ipcMainHandle("RESTART_ENGINE_ALL", () => {
+ipcMainHandle("RESTART_ENGINE_ALL", async () => {
   const engineHosts = store.get("engineHosts");
 
   for (const engineHost of engineHosts) {
-    log.info(`ENGINE ${engineHost.key}: ${engineHost.host}`);
-    ipcMainSend(win, "RESTART_ENGINE", { engineKey: engineHost.key });
+    await restartEngine(engineHost.key);
     break;
   }
 });
@@ -707,61 +760,7 @@ ipcMainHandle("RESTART_ENGINE_ALL", () => {
  * エンジンを再起動する。
  * エンジンの起動が開始したらresolve、起動が失敗したらreject。
  */
-ipcMainHandle(
-  "RESTART_ENGINE",
-  (_, { engineKey }) =>
-    new Promise<void>((resolve, reject) => {
-      log.info(
-        `Restarting ENGINE (last exit code: ${engineProcess.exitCode}, signal: ${engineProcess.signalCode})`
-      );
-
-      // エンジンのプロセスがすでに終了している、またはkillされている場合
-      const engineExited = engineProcess.exitCode !== null;
-      const engineKilled = engineProcess.signalCode !== null;
-
-      if (engineExited || engineKilled) {
-        log.info(
-          "ENGINE process is not started yet or already killed. Starting ENGINE..."
-        );
-
-        runEngine(engineKey);
-        resolve();
-        return;
-      }
-
-      // エンジンエラー時のエラーウィンドウ抑制用。
-      willQuitEngine = true;
-
-      // 「killに使用するコマンドが終了するタイミング」と「OSがプロセスをkillするタイミング」が違うので単純にtreeKillのコールバック関数でrunEngine()を実行すると失敗します。
-      // closeイベントはexitイベントよりも後に発火します。
-      const restartEngineOnProcessClosedCallback = () => {
-        log.info("ENGINE process killed. Restarting ENGINE...");
-
-        runEngine(engineKey);
-        resolve();
-      };
-      engineProcess.once("close", restartEngineOnProcessClosedCallback);
-
-      // treeKillのコールバック関数はコマンドが終了した時に呼ばれます。
-      log.info(`Killing current ENGINE process (PID=${engineProcess.pid})...`);
-      treeKill(engineProcess.pid, (error) => {
-        // error変数の値がundefined以外であればkillコマンドが失敗したことを意味します。
-        if (error != null) {
-          log.error("Failed to kill ENGINE");
-          log.error(error);
-
-          // killに失敗したとき、closeイベントが発生せず、once listenerが消費されない
-          // listenerを削除してENGINEの意図しない再起動を防止
-          engineProcess.removeListener(
-            "close",
-            restartEngineOnProcessClosedCallback
-          );
-
-          reject();
-        }
-      });
-    })
-);
+ipcMainHandle("RESTART_ENGINE", (_, { engineKey }) => restartEngine(engineKey));
 
 ipcMainHandle("SAVING_SETTING", (_, { newData }) => {
   if (newData !== undefined) {

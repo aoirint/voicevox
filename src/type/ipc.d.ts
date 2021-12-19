@@ -236,11 +236,6 @@ type IpcSOData = {
     return: void;
   };
 
-  RESTART_ENGINE: {
-    args: [obj: { engineKey: string }];
-    return: void;
-  };
-
   DETECTED_ENGINE_ERROR: {
     args: [obj: { engineKey: string }];
     return: void;
