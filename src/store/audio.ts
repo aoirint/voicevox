@@ -76,7 +76,7 @@ function parseTextFile(
         uuid2StyleIds.get(speakerUuid) ?? characterInfo.metas.styles[0].styleId;
       const speakerName = characterInfo.metas.speakerName;
 
-      const uniqueVoiceKey = {
+      const uniqueVoiceKey: UniqueVoiceKey = {
         speakerUuid,
         styleId,
       };
