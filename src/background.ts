@@ -302,7 +302,6 @@ const store = new Store<{
 // engine
 let willQuitEngine = false;
 let engineProcess: ChildProcess;
-
 async function runEngineAll() {
   const engineHosts = store.get("engineHosts");
   for (const engineHost of engineHosts) {
@@ -335,7 +334,7 @@ async function runEngine(engineKey: string) {
   const inheritAudioInfo = store.get("inheritAudioInfo");
 
   if (!process.env.ENGINE_PATH) {
-    return;
+    return; // Skip engine start if empty
   }
 
   log.info(`Starting ENGINE in ${useGpu ? "GPU" : "CPU"} mode`);
@@ -345,7 +344,6 @@ async function runEngine(engineKey: string) {
     appDirPath,
     process.env.ENGINE_PATH ?? "run.exe"
   );
-
   const args = useGpu ? ["--use_gpu"] : [];
 
   engineProcess = spawn(enginePath, args, {
