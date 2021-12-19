@@ -194,7 +194,7 @@ export default defineComponent({
             .flatMap((engineKey) => store.state.characterInfos[engineKey]) // styleId is unique between engines
             .find((info) =>
               info.metas.styles.find(
-                (style) => style.styleId === audioItem.value.styleId // styleId is unique between speakers
+                (style) => style.styleId === audioItem.value.styleId // styleId is unique between speakers in a engine
               )
             )
         : undefined
