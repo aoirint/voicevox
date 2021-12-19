@@ -386,9 +386,9 @@ async function runEngine(engineKey: string) {
 
   engineProcess.on("close", (code, signal) => {
     log.info(
-      `ENGINE ${engineHost.key}: terminated due to receipt of signal ${signal}`
+      `ENGINE ${engineHost.key}: process terminated due to receipt of signal ${signal}`
     );
-    log.info(`ENGINE ${engineHost.key}: exited with code ${code}`);
+    log.info(`ENGINE ${engineHost.key}: process exited with code ${code}`);
 
     if (!engineContainer.willQuitEngine) {
       ipcMainSend(win, "DETECTED_ENGINE_ERROR", { engineKey });
@@ -406,7 +406,7 @@ function restartEngine(engineKey: string): Promise<void> {
     const engineProcess = engineContainer.process;
 
     log.info(
-      `ENGINE ${engineKey}: Restarting (last exit code: ${engineProcess?.exitCode}, signal: ${engineProcess?.signalCode})`
+      `ENGINE ${engineKey}: Restarting process (last exit code: ${engineProcess?.exitCode}, signal: ${engineProcess?.signalCode})`
     );
 
     // エンジンのプロセスがすでに終了している、またはkillされている場合
@@ -415,7 +415,7 @@ function restartEngine(engineKey: string): Promise<void> {
 
     if (engineExited || engineKilled) {
       log.info(
-        `ENGINE ${engineKey}: Process not started yet or already killed. Starting ENGINE...`
+        `ENGINE ${engineKey}: Process not started yet or already killed. Starting process...`
       );
 
       runEngine(engineKey);
@@ -429,7 +429,7 @@ function restartEngine(engineKey: string): Promise<void> {
     // 「killに使用するコマンドが終了するタイミング」と「OSがプロセスをkillするタイミング」が違うので単純にtreeKillのコールバック関数でrunEngine()を実行すると失敗します。
     // closeイベントはexitイベントよりも後に発火します。
     const restartEngineOnProcessClosedCallback = () => {
-      log.info(`ENGINE ${engineKey}: Process killed. Restarting ENGINE...`);
+      log.info(`ENGINE ${engineKey}: Process killed. Restarting process...`);
 
       runEngine(engineKey);
       resolve();
@@ -443,7 +443,7 @@ function restartEngine(engineKey: string): Promise<void> {
     treeKill(engineProcess.pid, (error) => {
       // error変数の値がundefined以外であればkillコマンドが失敗したことを意味します。
       if (error != null) {
-        log.error(`ENGINE ${engineKey}: Failed to kill`);
+        log.error(`ENGINE ${engineKey}: Failed to kill process`);
         log.error(error);
 
         // killに失敗したとき、closeイベントが発生せず、once listenerが消費されない
