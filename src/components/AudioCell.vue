@@ -254,6 +254,7 @@ export default defineComponent({
     };
 
     const changeUniqueVoiceKey = (uniqueVoiceKey: UniqueVoiceKey) => {
+      // FIXME: assert UniqueVoiceKey is valid
       store.dispatch("COMMAND_CHANGE_UNIQUE_VOICE_KEY", {
         audioKey: props.audioKey,
         uniqueVoiceKey,
