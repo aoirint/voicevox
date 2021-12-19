@@ -116,8 +116,8 @@
   <setting-dialog v-model="isSettingDialogOpenComputed" />
   <hotkey-setting-dialog v-model="isHotkeySettingDialogOpenComputed" />
   <default-style-select-dialog
-    v-if="characterInfos"
-    :characterInfos="characterInfos"
+    v-if="flattenCharacterInfos"
+    :flattenCharacterInfos="flattenCharacterInfos"
     v-model="isDefaultStyleSelectDialogOpenComputed"
   />
   <accept-retrieve-telemetry-dialog
@@ -379,14 +379,10 @@ export default defineComponent({
       await store.dispatch("LOAD_DEFAULT_STYLE_IDS");
 
       let isUnsetDefaultStyleIds = false;
-      if (characterInfos.value == undefined)
+      if (flattenCharacterInfos.value == undefined)
         throw new Error("assert characterInfos != undefined");
 
-      const flattenCharacterInfos = Object.entries(
-        characterInfos.value
-      ).flatMap(([, infos]) => infos);
-
-      for (const info of flattenCharacterInfos) {
+      for (const info of flattenCharacterInfos.value) {
         isUnsetDefaultStyleIds ||= await store.dispatch(
           "IS_UNSET_DEFAULT_STYLE_ID",
           { speakerUuid: info.metas.speakerUuid }
@@ -441,7 +437,7 @@ export default defineComponent({
     });
 
     // デフォルトスタイル選択
-    const characterInfos = computed(() =>
+    const flattenCharacterInfos = computed(() =>
       Object.entries(store.state.characterInfos).flatMap(([, infos]) => infos)
     );
     const isDefaultStyleSelectDialogOpenComputed = computed({
@@ -509,7 +505,7 @@ export default defineComponent({
       isHelpDialogOpenComputed,
       isSettingDialogOpenComputed,
       isHotkeySettingDialogOpenComputed,
-      characterInfos,
+      flattenCharacterInfos,
       isDefaultStyleSelectDialogOpenComputed,
       isAcceptRetrieveTelemetryDialogOpenComputed,
       dragEventCounter,

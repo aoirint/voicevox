@@ -5,7 +5,10 @@
   >
     <div class="q-pa-md markdown-body">
       <q-list v-if="detailIndex === undefined">
-        <template v-for="(characterInfo, index) in characterInfos" :key="index">
+        <template
+          v-for="(characterInfo, index) in flattenCharacterInfos"
+          :key="index"
+        >
           <q-item clickable @click="selectCharacterInfIndex(index)">
             <q-item-section>{{
               characterInfo.metas.speakerName
@@ -24,11 +27,13 @@
           />
         </div>
         <div class="text-subtitle">
-          {{ characterInfos[detailIndex].metas.speakerName }}
+          {{ flattenCharacterInfos[detailIndex].metas.speakerName }}
         </div>
         <div
           class="markdown"
-          v-html="convertMarkdown(characterInfos[detailIndex].metas.policy)"
+          v-html="
+            convertMarkdown(flattenCharacterInfos[detailIndex].metas.policy)
+          "
         ></div>
       </div>
     </div>
@@ -45,7 +50,9 @@ export default defineComponent({
     const store = useStore();
     const md = useMarkdownIt();
 
-    const characterInfos = computed(() => store.state.characterInfos);
+    const flattenCharacterInfos = computed(() =>
+      Object.entries(store.state.characterInfos).flatMap(([, infos]) => infos)
+    );
 
     const convertMarkdown = (text: string) => {
       return md.render(text);
@@ -62,7 +69,7 @@ export default defineComponent({
     };
 
     return {
-      characterInfos,
+      flattenCharacterInfos,
       convertMarkdown,
       selectCharacterInfIndex,
       detailIndex,

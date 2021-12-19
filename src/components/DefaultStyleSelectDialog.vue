@@ -185,7 +185,7 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    characterInfos: {
+    flattenCharacterInfos: {
       type: Object as PropType<CharacterInfo[]>,
       required: true,
     },
@@ -202,7 +202,7 @@ export default defineComponent({
     // アップデートで増えたキャラ・スタイルがあれば、それらに対して起動時にデフォルトスタイル選択・試聴を問うための変数
     // その他の場合は、characterInfosと同じになる
     // FIXME: 現状はスタイルが増えてもデフォルトスタイルを問えないので、そこを改修しなければならない
-    const showCharacterInfos = ref(props.characterInfos);
+    const showCharacterInfos = ref(props.flattenCharacterInfos);
 
     const isFirstTime = ref(false);
     const selectedStyleIndexes = ref<(number | undefined)[]>([]);
@@ -214,7 +214,7 @@ export default defineComponent({
         if (!oldValue && newValue) {
           showCharacterInfos.value = [];
           selectedStyleIndexes.value = await Promise.all(
-            props.characterInfos.map(async (info) => {
+            props.flattenCharacterInfos.map(async (info) => {
               const styles = info.metas.styles;
               const isUnsetDefaultStyleId = await store.dispatch(
                 "IS_UNSET_DEFAULT_STYLE_ID",
@@ -237,7 +237,7 @@ export default defineComponent({
             })
           );
           if (!isFirstTime.value) {
-            showCharacterInfos.value = props.characterInfos;
+            showCharacterInfos.value = props.flattenCharacterInfos;
           } else {
             selectedStyleIndexes.value = showCharacterInfos.value.map(
               (info) => {
