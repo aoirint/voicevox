@@ -512,9 +512,14 @@ export const audioStore: VoiceVoxStoreOptions<
             }).then(toDispatchResponse("versionVersionGet"));
           } catch {
             await new Promise((resolve) => setTimeout(resolve, 1000));
-            window.electron.logInfo("Waiting ENGINE...");
+            window.electron.logInfo(
+              `ENGINE ${engineKey}: Waiting first response...`
+            );
             continue;
           }
+
+          window.electron.logInfo(`ENGINE ${engineKey}: Connectivity OK`);
+
           engineState = "READY";
           commit("SET_ENGINE_STATE", { engineKey, engineState });
           break;

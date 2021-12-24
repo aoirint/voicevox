@@ -13,23 +13,12 @@ import {
   SettingMutations,
   SettingStoreState,
   VoiceVoxStoreOptions,
-  EngineHostSetting,
 } from "./type";
 import Mousetrap from "mousetrap";
 import { useStore } from "@/store";
 import { Dark, setCssVar, colors } from "quasar";
 
 const hotkeyFunctionCache: Record<string, () => HotkeyReturnType> = {};
-
-const defaultEngineHosts: EngineHostSetting[] = (() => {
-  const defaultEngineHostsEnv = process.env.VUE_APP_DEFAULT_ENGINE_HOSTS;
-
-  if (defaultEngineHostsEnv) {
-    return JSON.parse(defaultEngineHostsEnv) as EngineHostSetting[];
-  }
-
-  return [];
-})();
 
 export const settingStoreState: SettingStoreState = {
   savingSetting: {
@@ -45,7 +34,7 @@ export const settingStoreState: SettingStoreState = {
   },
   hotkeySettings: [],
   toolbarSetting: [],
-  engineHosts: defaultEngineHosts,
+  engineHosts: [],
   themeSetting: {
     currentTheme: "Default",
     availableThemes: [],
