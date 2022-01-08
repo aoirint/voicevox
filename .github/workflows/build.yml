@@ -156,8 +156,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu-') || startsWith(matrix.os, 'macos-')
         shell: bash
         run: |
-          echo "ENGINE_PATH=./run" > .env.production
-          echo "VUE_APP_ENGINE_URL=http://127.0.0.1:50021" >> .env.production
+          echo 'DEFAULT_ENGINES=[{"executionEnabled":true,"executionFilePath":"./run","host":"http://127.0.0.1:50021"}]' >> .env.production
           echo "VUE_APP_GTM_CONTAINER_ID=GTM-DUMMY" >> .env.production
 
       - name: Checkout Product Version Resource

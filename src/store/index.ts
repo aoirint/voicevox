@@ -124,6 +124,7 @@ export const indexStore: VoiceVoxStoreOptions<
     async INIT_VUEX({ dispatch }) {
       const promises = [];
 
+      promises.push(dispatch("GET_ENGINES"));
       promises.push(dispatch("GET_USE_GPU"));
       promises.push(dispatch("GET_PRESET_CONFIG"));
       promises.push(dispatch("GET_INHERIT_AUDIOINFO"));
@@ -134,8 +135,8 @@ export const indexStore: VoiceVoxStoreOptions<
       promises.push(dispatch("GET_ACCEPT_RETRIEVE_TELEMETRY"));
       promises.push(dispatch("GET_EXPERIMENTAL_SETTING"));
 
-      Promise.all(promises).then(() => {
-        dispatch("ON_VUEX_READY");
+      await Promise.all(promises).then(async () => {
+        await dispatch("ON_VUEX_READY");
       });
     },
   },

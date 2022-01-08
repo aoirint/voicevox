@@ -58,7 +58,13 @@ describe("store/vuex.js test", () => {
         hotkeySettings: [],
         toolbarSetting: [],
         acceptRetrieveTelemetry: "Unconfirmed",
-        engineHost: "http://127.0.0.1",
+        engines: [
+          {
+            executionEnabled: false,
+            executionFilePath: "",
+            host: "http://127.0.0.1",
+          },
+        ],
         experimentalSetting: {
           enableInterrogative: false,
           enableReorderCell: false,

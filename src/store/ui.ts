@@ -9,6 +9,7 @@ import {
   UiStoreState,
   VoiceVoxStoreOptions,
 } from "./type";
+import { Engine } from "@/type/preload";
 
 export function createUILockAction<S, A extends ActionsBase, K extends keyof A>(
   action: (
@@ -103,6 +104,9 @@ export const uiStore: VoiceVoxStoreOptions<UiGetters, UiActions, UiMutations> =
       },
       SET_USE_GPU(state, { useGpu }: { useGpu: boolean }) {
         state.useGpu = useGpu;
+      },
+      SET_ENGINES(state, { engines }: { engines: Engine[] }) {
+        state.engines = engines;
       },
       SET_INHERIT_AUDIOINFO(
         state,
@@ -247,6 +251,11 @@ export const uiStore: VoiceVoxStoreOptions<UiGetters, UiActions, UiMutations> =
       async SET_USE_GPU({ commit }, { useGpu }: { useGpu: boolean }) {
         commit("SET_USE_GPU", {
           useGpu: await window.electron.useGpu(useGpu),
+        });
+      },
+      async GET_ENGINES({ state, commit }) {
+        commit("SET_ENGINES", {
+          engines: await window.electron.engines(),
         });
       },
       async GET_INHERIT_AUDIOINFO({ commit }) {

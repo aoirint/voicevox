@@ -441,6 +441,8 @@ export const audioStore: VoiceVoxStoreOptions<
   actions: {
     START_WAITING_ENGINE: createUILockAction(
       async ({ state, commit, dispatch }) => {
+        const engine = state.engines[0]; // TODO: 複数エンジン対応
+
         let engineState = state.engineState;
         for (let i = 0; i < 100; i++) {
           engineState = state.engineState;
@@ -450,12 +452,16 @@ export const audioStore: VoiceVoxStoreOptions<
 
           try {
             await dispatch("INVOKE_ENGINE_CONNECTOR", {
+              host: engine.host,
               action: "versionVersionGet",
               payload: [],
             }).then(toDispatchResponse("versionVersionGet"));
           } catch {
             await new Promise((resolve) => setTimeout(resolve, 1000));
-            window.electron.logInfo("waiting engine...");
+
+            // TODO: engineがundefinedの場合にログ出力されないためオプショナルチェーンにしている。複数エンジン対応が終わったら解除
+            // TODO: URLには認証情報が載ることがある。将来的にはURLをそのままログ出力しないようにする
+            window.electron.logInfo(`Waiting engine ${engine?.host}`);
             continue;
           }
           engineState = "READY";
@@ -468,8 +474,11 @@ export const audioStore: VoiceVoxStoreOptions<
         }
       }
     ),
-    LOAD_CHARACTER: createUILockAction(async ({ commit, dispatch }) => {
+    LOAD_CHARACTER: createUILockAction(async ({ state, commit, dispatch }) => {
+      const engine = state.engines[0]; // TODO: 複数エンジン対応
+
       const speakers = await dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engine.host,
         action: "speakersSpeakersGet",
         payload: [],
       })
@@ -506,7 +515,10 @@ export const audioStore: VoiceVoxStoreOptions<
         return styles;
       };
       const getSpeakerInfo = async function (speaker: Speaker) {
+        const engine = state.engines[0]; // TODO: 複数エンジン対応
+
         const speakerInfo = await dispatch("INVOKE_ENGINE_CONNECTOR", {
+          host: engine.host,
           action: "speakerInfoSpeakerInfoGet",
           payload: [{ speakerUuid: speaker.speakerUuid }],
         })
@@ -647,7 +659,10 @@ export const audioStore: VoiceVoxStoreOptions<
         isKana?: boolean;
       }
     ) {
+      const engine = state.engines[0]; // TODO: 複数エンジン対応
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engine.host,
         action: "accentPhrasesAccentPhrasesPost",
         payload: [
           {
@@ -668,13 +683,16 @@ export const audioStore: VoiceVoxStoreOptions<
         });
     },
     FETCH_MORA_DATA(
-      { dispatch },
+      { dispatch, state },
       {
         accentPhrases,
         styleId,
       }: { accentPhrases: AccentPhrase[]; styleId: number }
     ) {
+      const engine = state.engines[0]; // TODO: 複数エンジン対応
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engine.host,
         action: "moraDataMoraDataPost",
         payload: [{ accentPhrase: accentPhrases, speaker: styleId }],
       })
@@ -717,7 +735,10 @@ export const audioStore: VoiceVoxStoreOptions<
       { dispatch, state },
       { text, styleId }: { text: string; styleId: number }
     ) {
+      const engine = state.engines[0]; // TODO: 複数エンジン対応
+
       return dispatch("INVOKE_ENGINE_CONNECTOR", {
+        host: engine.host,
         action: "audioQueryAudioQueryPost",
         payload: [
           {
@@ -794,8 +815,14 @@ export const audioStore: VoiceVoxStoreOptions<
       }
     ),
     CONNECT_AUDIO: createUILockAction(
-      async ({ dispatch }, { encodedBlobs }: { encodedBlobs: string[] }) => {
+      async (
+        { dispatch, state },
+        { encodedBlobs }: { encodedBlobs: string[] }
+      ) => {
+        const engine = state.engines[0]; // TODO: 複数エンジン対応
+
         return dispatch("INVOKE_ENGINE_CONNECTOR", {
+          host: engine.host,
           action: "connectWavesConnectWavesPost",
           payload: [
             {
@@ -815,6 +842,8 @@ export const audioStore: VoiceVoxStoreOptions<
     ),
     GENERATE_AUDIO: createUILockAction(
       async ({ dispatch, state }, { audioKey }: { audioKey: string }) => {
+        const engine = state.engines[0]; // TODO: 複数エンジン対応
+
         const audioItem: AudioItem = JSON.parse(
           JSON.stringify(state.audioItems[audioKey])
         );
@@ -829,6 +858,7 @@ export const audioStore: VoiceVoxStoreOptions<
         }
 
         return dispatch("INVOKE_ENGINE_CONNECTOR", {
+          host: engine.host,
           action: "synthesisSynthesisPost",
           payload: [
             {

@@ -22,6 +22,7 @@ import {
   ToolbarSetting,
   UpdateInfo,
   Preset,
+  Engine,
 } from "@/type/preload";
 import { IEngineConnectorFactory } from "@/infrastructures/EngineConnector";
 import { QVueGlobals } from "quasar";
@@ -679,7 +680,7 @@ export type SettingStoreState = {
   savingSetting: SavingSetting;
   hotkeySettings: HotkeySetting[];
   toolbarSetting: ToolbarSetting;
-  engineHost: string;
+  engines: Engine[];
   themeSetting: ThemeSetting;
   acceptRetrieveTelemetry: AcceptRetrieveTelemetryStatus;
   experimentalSetting: ExperimentalSetting;
@@ -842,6 +843,12 @@ type UiStoreTypes = {
     action(payload: { useGpu: boolean }): void;
   };
 
+  GET_ENGINES: {
+    action(): void;
+  };
+
+  SET_ENGINES: { mutation: { engines: Engine[] } };
+
   GET_INHERIT_AUDIOINFO: {
     action(): void;
   };
@@ -951,6 +958,7 @@ export type IEngineConnectorFactoryActions = ReturnType<
 type IEngineConnectorFactoryActionsMapper<K> =
   K extends keyof IEngineConnectorFactoryActions
     ? (payload: {
+        host: string;
         action: K;
         payload: Parameters<IEngineConnectorFactoryActions[K]>;
       }) => ReturnType<IEngineConnectorFactoryActions[K]>

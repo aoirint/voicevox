@@ -32,6 +32,7 @@ import {
   ExperimentalSetting,
   AcceptRetrieveTelemetryStatus,
   ToolbarSetting,
+  Engine,
 } from "./type/preload";
 
 import log from "electron-log";
@@ -55,6 +56,16 @@ if (isDevelopment) {
     path.join(app.getPath("appData"), `${app.getName()}-dev`)
   );
 }
+
+const engines: Engine[] = (() => {
+  const defaultEnginesEnv = process.env.DEFAULT_ENGINES;
+
+  if (defaultEnginesEnv) {
+    return JSON.parse(defaultEnginesEnv) as Engine[];
+  }
+
+  return [];
+})();
 
 let win: BrowserWindow;
 
@@ -307,6 +318,18 @@ const store = new Store<{
 let willQuitEngine = false;
 let engineProcess: ChildProcess;
 async function runEngine() {
+  const engine = engines[0]; // TODO: 複数エンジン対応
+
+  if (!engine.executionEnabled) {
+    log.info("Skipped engine execution");
+    return;
+  }
+
+  if (!engine.executionFilePath) {
+    log.info("Skipped engine execution because executionFilePath is empty");
+    return;
+  }
+
   willQuitEngine = false;
 
   // 最初のエンジンモード
@@ -335,7 +358,7 @@ async function runEngine() {
   // エンジンプロセスの起動
   const enginePath = path.resolve(
     appDirPath,
-    process.env.ENGINE_PATH ?? "run.exe"
+    engine.executionFilePath ?? "run.exe"
   );
   const args = useGpu ? ["--use_gpu"] : [];
 
@@ -696,6 +719,11 @@ ipcMainHandle("LOG_ERROR", (_, ...params) => {
 
 ipcMainHandle("LOG_INFO", (_, ...params) => {
   log.info(...params);
+});
+
+ipcMainHandle("ENGINES", () => {
+  // エンジン情報を設定ファイルに保存しないためにstoreではなくグローバル変数を使用する
+  return engines;
 });
 
 /**
