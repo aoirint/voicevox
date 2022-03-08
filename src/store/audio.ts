@@ -468,8 +468,19 @@ export const audioStore: VoiceVoxStoreOptions<
   },
 
   actions: {
+    START_WAITING_ENGINE_ALL: createUILockAction(
+      async ({ state, dispatch }) => {
+        const engineInfos = state.engineInfos;
+
+        for (const engineInfo of engineInfos) {
+          await dispatch("START_WAITING_ENGINE", {
+            engineKey: engineInfo.key,
+          });
+        }
+      }
+    ),
     START_WAITING_ENGINE: createUILockAction(
-      async ({ state, commit, dispatch }) => {
+      async ({ state, commit, dispatch }, { engineKey: string }) => {
         const engineInfo = state.engineInfos[0]; // TODO: 複数エンジン対応
         if (!engineInfo)
           throw new Error(`No such engineInfo registered: index == 0`);
@@ -1422,7 +1433,7 @@ export const audioStore: VoiceVoxStoreOptions<
       await commit("SET_ENGINE_STATE", { engineState: "STARTING" });
       window.electron
         .restartEngine()
-        .then(() => dispatch("START_WAITING_ENGINE"))
+        .then(() => dispatch("START_WAITING_ENGINE_ALL"))
         .catch(() => dispatch("DETECTED_ENGINE_ERROR"));
     },
     CHECK_FILE_EXISTS(_, { file }: { file: string }) {
