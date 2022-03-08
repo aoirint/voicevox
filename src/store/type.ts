@@ -105,7 +105,7 @@ type AudioStoreTypes = {
 
   START_WAITING_ENGINE_ALL: {
     action(): void;
-  }
+  };
 
   START_WAITING_ENGINE: {
     action(payload: { engineKey: string }): void;

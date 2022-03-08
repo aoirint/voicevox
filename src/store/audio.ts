@@ -472,6 +472,7 @@ export const audioStore: VoiceVoxStoreOptions<
       async ({ state, dispatch }) => {
         const engineInfos = state.engineInfos;
 
+        // TODO: 並列起動すべき?
         for (const engineInfo of engineInfos) {
           await dispatch("START_WAITING_ENGINE", {
             engineKey: engineInfo.key,
@@ -480,10 +481,12 @@ export const audioStore: VoiceVoxStoreOptions<
       }
     ),
     START_WAITING_ENGINE: createUILockAction(
-      async ({ state, commit, dispatch }, { engineKey: string }) => {
-        const engineInfo = state.engineInfos[0]; // TODO: 複数エンジン対応
+      async ({ state, commit, dispatch }, { engineKey }) => {
+        const engineInfo = state.engineInfos.find(
+          (engineInfo) => engineInfo.key === engineKey
+        );
         if (!engineInfo)
-          throw new Error(`No such engineInfo registered: index == 0`);
+          throw new Error(`No such engineInfo registered: key == ${engineKey}`);
 
         let engineState = state.engineState;
         for (let i = 0; i < 100; i++) {
